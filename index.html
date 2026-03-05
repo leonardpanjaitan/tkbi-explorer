@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -89,7 +88,9 @@ margin-bottom:10px;
 }
 
 button{
-margin-top:10px;
+margin-top:5px;
+padding:6px 10px;
+cursor:pointer;
 }
 
 </style>
@@ -107,6 +108,8 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 <div class="sidebar">
 
 <input id="search" class="search" placeholder="Cari KBLI / Aktivitas">
+
+<button onclick="resetPage()">Reset / Refresh</button>
 
 <div id="sektorList"></div>
 
@@ -286,25 +289,59 @@ content.appendChild(activity)
 }
 
 ////////////////////////////////////////////////////////
-// SEARCH
+// SEARCH AKTIVITAS TKBI
 ////////////////////////////////////////////////////////
 
 document.getElementById("search").addEventListener("keyup", function(){
 
 let keyword = this.value.toLowerCase()
 
-let items = document.querySelectorAll(".sektor-item")
+if(keyword.length < 2) return
 
-items.forEach(i=>{
+const content = document.getElementById("content")
 
-if(i.innerText.toLowerCase().includes(keyword))
-i.style.display="block"
-else
-i.style.display="none"
+content.innerHTML = "<h2>Hasil Pencarian</h2>"
+
+let tscNodes = xmlData.getElementsByTagName("TSC")
+
+for(let t of tscNodes){
+
+let kode = t.getElementsByTagName("Kode")[0]?.textContent
+let nama = t.getElementsByTagName("NamaKBLI")[0]?.textContent
+
+if(!kode || !nama) continue
+
+let text = (kode + " " + nama).toLowerCase()
+
+if(text.includes(keyword)){
+
+let div = document.createElement("div")
+div.className="activity"
+
+div.innerHTML = `
+<b>${nama}</b><br>
+Kode TSC : ${kode}
+`
+
+content.appendChild(div)
+
+}
+
+}
 
 })
 
-})
+////////////////////////////////////////////////////////
+// RESET / REFRESH PAGE
+////////////////////////////////////////////////////////
+
+function resetPage(){
+
+document.getElementById("search").value=""
+
+document.getElementById("content").innerHTML="Pilih sektor di sebelah kiri."
+
+}
 
 </script>
 
