@@ -3,54 +3,70 @@
 <head>
 
 <meta charset="UTF-8">
-<title>TKBI Explorer Indonesia - by Leonard Tiopan Panjaitan</title>
+
+<title>
+TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS - March 2026
+</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
 
 body{
+margin:0;
 font-family:Arial;
 background:#f4f6f8;
-margin:0;
-padding:20px;
 }
 
-h1{
-color:#1b5e20;
+header{
+background:#1b5e20;
+color:white;
+padding:20px;
+font-size:20px;
+font-weight:bold;
 }
 
 .container{
-max-width:1200px;
-margin:auto;
+display:flex;
+height:calc(100vh - 70px);
 }
 
-.card{
+.sidebar{
+width:280px;
 background:white;
-padding:20px;
-margin-bottom:15px;
-border-radius:8px;
-box-shadow:0 2px 4px rgba(0,0,0,0.1);
-}
-
-.sektor{
-font-size:22px;
-font-weight:bold;
-color:#0d47a1;
-margin-top:20px;
-}
-
-.tsc{
-margin-top:15px;
+border-right:1px solid #ddd;
+overflow:auto;
 padding:15px;
-border-left:4px solid #2e7d32;
+}
+
+.main{
+flex:1;
+overflow:auto;
+padding:20px;
+}
+
+.sektor-item{
+padding:10px;
+cursor:pointer;
+border-bottom:1px solid #eee;
+}
+
+.sektor-item:hover{
 background:#f1f8e9;
 }
 
+.activity{
+background:white;
+padding:15px;
+margin-bottom:10px;
+border-left:4px solid #2e7d32;
+border-radius:5px;
+}
+
 .pertanyaan{
-margin-top:10px;
-padding:10px;
 background:#fafafa;
+padding:10px;
+margin-top:10px;
 border-radius:5px;
 }
 
@@ -58,8 +74,21 @@ border-radius:5px;
 margin-left:20px;
 }
 
+.social{
+background:#e3f2fd;
+padding:10px;
+margin-top:10px;
+border-radius:5px;
+}
+
 .search{
-margin-bottom:20px;
+width:100%;
+padding:8px;
+margin-bottom:10px;
+}
+
+button{
+margin-top:10px;
 }
 
 </style>
@@ -68,31 +97,45 @@ margin-bottom:20px;
 
 <body>
 
+<header>
+TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS - March 2026
+</header>
+
 <div class="container">
 
-<h1>TKBI Explorer Indonesia</h1>
+<div class="sidebar">
 
-<input class="search" id="search" placeholder="Cari aktivitas / KBLI..." style="width:100%;padding:10px;font-size:16px;">
+<input id="search" class="search" placeholder="Cari KBLI / Aktivitas">
 
-<div id="content">Memuat data TKBI...</div>
+<div id="sektorList"></div>
+
+</div>
+
+<div class="main">
+
+<div id="content">
+Memuat data TKBI...
+</div>
+
+</div>
 
 </div>
 
 <script>
 
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 // CLEAR CACHE
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 
 if ('caches' in window) {
-caches.keys().then(function(names) {
-for (let name of names) caches.delete(name);
-});
+caches.keys().then(names => {
+for (let name of names) caches.delete(name)
+})
 }
 
-////////////////////////////////////////////////////
-// LOAD ZIP
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+// LOAD XML ZIP
+////////////////////////////////////////////////////////
 
 fetch("TKBI.xml.zip?nocache=" + Date.now())
 .then(res => res.arrayBuffer())
@@ -103,35 +146,58 @@ fetch("TKBI.xml.zip?nocache=" + Date.now())
 const parser = new DOMParser()
 const xml = parser.parseFromString(xmlText,"text/xml")
 
-renderTKBI(xml)
+initExplorer(xml)
 
 })
 
-////////////////////////////////////////////////////
-// RENDER
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+// INITIALIZE
+////////////////////////////////////////////////////////
 
-function renderTKBI(xml){
+let xmlData
+
+function initExplorer(xml){
+
+xmlData = xml
+
+const sektor = xml.getElementsByTagName("Sektor")
+const sektorList = document.getElementById("sektorList")
+
+for(let s of sektor){
+
+let nama = s.getElementsByTagName("Nama")[0]?.textContent
+
+let div = document.createElement("div")
+div.className="sektor-item"
+div.textContent=nama
+
+div.onclick = () => showSektor(s)
+
+sektorList.appendChild(div)
+
+}
+
+document.getElementById("content").innerHTML="Pilih sektor di sebelah kiri."
+
+}
+
+////////////////////////////////////////////////////////
+// SHOW SEKTOR
+////////////////////////////////////////////////////////
+
+function showSektor(sektorNode){
 
 const content = document.getElementById("content")
 content.innerHTML=""
 
-const sektor = xml.getElementsByTagName("Sektor")
+const sektorNama = sektorNode.getElementsByTagName("Nama")[0]?.textContent
 
-for(let s of sektor){
+let title = document.createElement("h2")
+title.textContent=sektorNama
 
-let sektorNama = s.getElementsByTagName("Nama")[0]?.textContent
+content.appendChild(title)
 
-let sektorDiv = document.createElement("div")
-sektorDiv.className="card"
-
-let title = document.createElement("div")
-title.className="sektor"
-title.textContent = sektorNama
-
-sektorDiv.appendChild(title)
-
-const tscList = s.getElementsByTagName("TSC")
+const tscList = sektorNode.getElementsByTagName("TSC")
 
 for(let tscNode of tscList){
 
@@ -141,70 +207,99 @@ let klasifikasi = tscNode.getElementsByTagName("Klasifikasi")[0]?.textContent
 
 if(!kode) continue
 
-let tscDiv = document.createElement("div")
-tscDiv.className="tsc"
+let activity = document.createElement("div")
+activity.className="activity"
 
-tscDiv.innerHTML = `
+activity.innerHTML = `
 <b>${nama}</b><br>
 Kode TSC : ${kode}<br>
 Klasifikasi : ${klasifikasi}
 `
 
+////////////////////////////////////////////////////////
+// PERTANYAAN
+////////////////////////////////////////////////////////
+
 let pertanyaan = tscNode.getElementsByTagName("Pertanyaan")
 
 for(let p of pertanyaan){
 
-let pText = p.getElementsByTagName("Text")[0]?.textContent
+let text = p.getElementsByTagName("Text")[0]?.textContent
 
-let pDiv = document.createElement("div")
-pDiv.className="pertanyaan"
+let div = document.createElement("div")
+div.className="pertanyaan"
 
-pDiv.innerHTML = `<b>Pertanyaan:</b> ${pText}`
+div.innerHTML="<b>Pertanyaan:</b> "+text
 
 let kriteria = p.getElementsByTagName("Kriteria")
 
 for(let k of kriteria){
 
-let kText = k.getElementsByTagName("Text")[0]?.textContent
+let ktext = k.getElementsByTagName("Text")[0]?.textContent
 
-let li = document.createElement("div")
-li.className="kriteria"
-li.innerHTML = "• " + kText
+let kr = document.createElement("div")
+kr.className="kriteria"
 
-pDiv.appendChild(li)
+kr.innerHTML="• "+ktext
 
-}
-
-tscDiv.appendChild(pDiv)
+div.appendChild(kr)
 
 }
 
-sektorDiv.appendChild(tscDiv)
+activity.appendChild(div)
 
 }
 
-content.appendChild(sektorDiv)
+////////////////////////////////////////////////////////
+// ASPEK SOSIAL
+////////////////////////////////////////////////////////
+
+let sosial = sektorNode.getElementsByTagName("AspekSosial")
+
+if(sosial.length>0){
+
+let socialDiv = document.createElement("div")
+socialDiv.className="social"
+
+socialDiv.innerHTML="<b>Aspek Sosial:</b>"
+
+let pilar = sosial[0].getElementsByTagName("NamaPilar")
+
+for(let p of pilar){
+
+let line = document.createElement("div")
+line.innerHTML="• "+p.textContent
+
+socialDiv.appendChild(line)
+
+}
+
+activity.appendChild(socialDiv)
+
+}
+
+content.appendChild(activity)
 
 }
 
 }
 
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 // SEARCH
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 
 document.getElementById("search").addEventListener("keyup", function(){
 
 let keyword = this.value.toLowerCase()
 
-let cards = document.querySelectorAll(".tsc")
+let items = document.querySelectorAll(".sektor-item")
 
-cards.forEach(function(card){
+items.forEach(i=>{
 
-if(card.innerText.toLowerCase().includes(keyword))
-card.style.display="block"
+if(i.innerText.toLowerCase().includes(keyword))
+i.style.display="block"
 else
-card.style.display="none"
+i.style.display="none"
 
 })
 
