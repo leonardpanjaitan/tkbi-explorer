@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <meta charset="UTF-8">
@@ -22,7 +23,7 @@ header{
 background:#1b5e20;
 color:white;
 padding:20px;
-font-size:20px;
+font-size:18px;
 font-weight:bold;
 }
 
@@ -42,16 +43,16 @@ padding:15px;
 .main{
 flex:1;
 overflow:auto;
-padding:20px;
+padding:25px;
 }
 
-.sektor-item{
+.sektor{
 padding:10px;
 cursor:pointer;
 border-bottom:1px solid #eee;
 }
 
-.sektor-item:hover{
+.sektor:hover{
 background:#f1f8e9;
 }
 
@@ -74,21 +75,20 @@ border-radius:5px;
 margin-left:20px;
 }
 
-.social{
-background:#e3f2fd;
-padding:10px;
-margin-top:10px;
-border-radius:5px;
+.tree{
+margin-left:20px;
+font-size:14px;
+color:#333;
+}
+
+.filter{
+margin-bottom:10px;
 }
 
 .search{
 width:100%;
 padding:8px;
 margin-bottom:10px;
-}
-
-button{
-margin-top:10px;
 }
 
 </style>
@@ -107,15 +107,26 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 
 <input id="search" class="search" placeholder="Cari KBLI / Aktivitas">
 
+<div class="filter">
+
+<label><input type="checkbox" id="hijau" checked> Hijau</label><br>
+<label><input type="checkbox" id="transisi" checked> Transisi</label>
+
+</div>
+
+<h4>Sektor</h4>
 <div id="sektorList"></div>
+
+<h4>Prinsip</h4>
+
+<div class="sektor" onclick="navigate('dnsh')">DNSH</div>
+<div class="sektor" onclick="navigate('aspek-sosial')">Aspek Sosial</div>
 
 </div>
 
 <div class="main">
 
-<div id="content">
-Memuat data TKBI...
-</div>
+<div id="content">Memuat data TKBI...</div>
 
 </div>
 
@@ -123,183 +134,242 @@ Memuat data TKBI...
 
 <script>
 
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 // CLEAR CACHE
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
 if ('caches' in window) {
-caches.keys().then(names => {
+caches.keys().then(names=>{
 for (let name of names) caches.delete(name)
 })
 }
 
-////////////////////////////////////////////////////////
-// LOAD XML ZIP
-////////////////////////////////////////////////////////
-
-fetch("TKBI.xml.zip?nocache=" + Date.now())
-.then(res => res.arrayBuffer())
-.then(data => JSZip.loadAsync(data))
-.then(zip => zip.file("TKBI.xml").async("text"))
-.then(xmlText => {
-
-const parser = new DOMParser()
-const xml = parser.parseFromString(xmlText,"text/xml")
-
-initExplorer(xml)
-
-})
-
-////////////////////////////////////////////////////////
-// INITIALIZE
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// GLOBAL
+////////////////////////////////////////////////////////////
 
 let xmlData
 
-function initExplorer(xml){
+////////////////////////////////////////////////////////////
+// LOAD XML
+////////////////////////////////////////////////////////////
 
-xmlData = xml
+fetch("TKBI.xml.zip?nocache=" + Date.now())
+.then(res=>res.arrayBuffer())
+.then(data=>JSZip.loadAsync(data))
+.then(zip=>zip.file("TKBI.xml").async("text"))
+.then(xmlText=>{
 
-const sektor = xml.getElementsByTagName("Sektor")
-const sektorList = document.getElementById("sektorList")
+const parser = new DOMParser()
+xmlData = parser.parseFromString(xmlText,"text/xml")
+
+init()
+
+})
+
+////////////////////////////////////////////////////////////
+// INITIALIZE
+////////////////////////////////////////////////////////////
+
+function init(){
+
+const sektorList=document.getElementById("sektorList")
+const sektor=xmlData.getElementsByTagName("Sektor")
 
 for(let s of sektor){
 
-let nama = s.getElementsByTagName("Nama")[0]?.textContent
+let nama=s.getElementsByTagName("Nama")[0]?.textContent
 
-let div = document.createElement("div")
-div.className="sektor-item"
+let div=document.createElement("div")
+div.className="sektor"
 div.textContent=nama
 
-div.onclick = () => showSektor(s)
+div.onclick=()=>navigate(nama)
 
 sektorList.appendChild(div)
 
 }
 
-document.getElementById("content").innerHTML="Pilih sektor di sebelah kiri."
+route()
 
 }
 
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// ROUTING
+////////////////////////////////////////////////////////////
+
+function navigate(path){
+
+history.pushState({}, "", path.toLowerCase())
+
+route()
+
+}
+
+window.onpopstate=route
+
+function route(){
+
+let path=window.location.pathname.split("/").pop()
+
+if(path=="dnsh") showDNSH()
+else if(path=="aspek-sosial") showSocial()
+else showSektor(path)
+
+}
+
+////////////////////////////////////////////////////////////
 // SHOW SEKTOR
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-function showSektor(sektorNode){
+function showSektor(nama){
 
-const content = document.getElementById("content")
-content.innerHTML=""
+const content=document.getElementById("content")
 
-const sektorNama = sektorNode.getElementsByTagName("Nama")[0]?.textContent
+const sektor=Array.from(xmlData.getElementsByTagName("Sektor"))
+.find(s=>s.getElementsByTagName("Nama")[0]?.textContent.toLowerCase()==nama)
 
-let title = document.createElement("h2")
-title.textContent=sektorNama
+if(!sektor){
+content.innerHTML="Pilih sektor di sidebar."
+return
+}
 
-content.appendChild(title)
+content.innerHTML="<h2>"+nama+"</h2>"
 
-const tscList = sektorNode.getElementsByTagName("TSC")
+const hijau=document.getElementById("hijau").checked
+const transisi=document.getElementById("transisi").checked
 
-for(let tscNode of tscList){
+const tscList=sektor.getElementsByTagName("TSC")
 
-let kode = tscNode.getElementsByTagName("Kode")[0]?.textContent
-let nama = tscNode.getElementsByTagName("NamaKBLI")[0]?.textContent
-let klasifikasi = tscNode.getElementsByTagName("Klasifikasi")[0]?.textContent
+for(let t of tscList){
+
+let klasifikasi=t.getElementsByTagName("Klasifikasi")[0]?.textContent
+
+if(klasifikasi=="Hijau" && !hijau) continue
+if(klasifikasi=="Transisi" && !transisi) continue
+
+let kode=t.getElementsByTagName("Kode")[0]?.textContent
+let namaKBLI=t.getElementsByTagName("NamaKBLI")[0]?.textContent
 
 if(!kode) continue
 
-let activity = document.createElement("div")
-activity.className="activity"
+let div=document.createElement("div")
+div.className="activity"
 
-activity.innerHTML = `
-<b>${nama}</b><br>
-Kode TSC : ${kode}<br>
-Klasifikasi : ${klasifikasi}
-`
+div.innerHTML="<b>"+namaKBLI+"</b><br>Kode TSC: "+kode+"<br>Klasifikasi: "+klasifikasi
 
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 // PERTANYAAN
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-let pertanyaan = tscNode.getElementsByTagName("Pertanyaan")
+let pertanyaan=t.getElementsByTagName("Pertanyaan")
 
 for(let p of pertanyaan){
 
-let text = p.getElementsByTagName("Text")[0]?.textContent
+let ptext=p.getElementsByTagName("Text")[0]?.textContent
 
-let div = document.createElement("div")
-div.className="pertanyaan"
+let pdiv=document.createElement("div")
+pdiv.className="pertanyaan"
 
-div.innerHTML="<b>Pertanyaan:</b> "+text
+pdiv.innerHTML="<b>Pertanyaan:</b> "+ptext
 
-let kriteria = p.getElementsByTagName("Kriteria")
+let kriteria=p.getElementsByTagName("Kriteria")
 
 for(let k of kriteria){
 
-let ktext = k.getElementsByTagName("Text")[0]?.textContent
+let ktext=k.getElementsByTagName("Text")[0]?.textContent
 
-let kr = document.createElement("div")
-kr.className="kriteria"
+let kdiv=document.createElement("div")
+kdiv.className="kriteria"
 
-kr.innerHTML="• "+ktext
+kdiv.innerHTML="• "+ktext
 
-div.appendChild(kr)
-
-}
-
-activity.appendChild(div)
+pdiv.appendChild(kdiv)
 
 }
 
-////////////////////////////////////////////////////////
+div.appendChild(pdiv)
+
+}
+
+content.appendChild(div)
+
+}
+
+}
+
+////////////////////////////////////////////////////////////
+// DNSH
+////////////////////////////////////////////////////////////
+
+function showDNSH(){
+
+const content=document.getElementById("content")
+
+content.innerHTML="<h2>DNSH</h2>"
+
+let dnsh=xmlData.getElementsByTagName("DNSH")
+
+for(let d of dnsh){
+
+let nama=d.getElementsByTagName("Nama")[0]?.textContent
+
+let div=document.createElement("div")
+div.className="activity"
+
+div.innerHTML="<b>"+nama+"</b>"
+
+content.appendChild(div)
+
+}
+
+}
+
+////////////////////////////////////////////////////////////
 // ASPEK SOSIAL
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-let sosial = sektorNode.getElementsByTagName("AspekSosial")
+function showSocial(){
 
-if(sosial.length>0){
+const content=document.getElementById("content")
 
-let socialDiv = document.createElement("div")
-socialDiv.className="social"
+content.innerHTML="<h2>Aspek Sosial</h2>"
 
-socialDiv.innerHTML="<b>Aspek Sosial:</b>"
+let sosial=xmlData.getElementsByTagName("AspekSosial")
 
-let pilar = sosial[0].getElementsByTagName("NamaPilar")
+if(sosial.length==0) return
+
+let pilar=sosial[0].getElementsByTagName("NamaPilar")
 
 for(let p of pilar){
 
-let line = document.createElement("div")
-line.innerHTML="• "+p.textContent
+let div=document.createElement("div")
+div.className="activity"
 
-socialDiv.appendChild(line)
+div.innerHTML="• "+p.textContent
 
-}
-
-activity.appendChild(socialDiv)
-
-}
-
-content.appendChild(activity)
+content.appendChild(div)
 
 }
 
 }
 
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 // SEARCH
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-document.getElementById("search").addEventListener("keyup", function(){
+document.getElementById("search").addEventListener("keyup",function(){
 
-let keyword = this.value.toLowerCase()
+let keyword=this.value.toLowerCase()
 
-let items = document.querySelectorAll(".sektor-item")
+let sektor=document.querySelectorAll(".sektor")
 
-items.forEach(i=>{
+sektor.forEach(s=>{
 
-if(i.innerText.toLowerCase().includes(keyword))
-i.style.display="block"
+if(s.innerText.toLowerCase().includes(keyword))
+s.style.display="block"
 else
-i.style.display="none"
+s.style.display="none"
 
 })
 
