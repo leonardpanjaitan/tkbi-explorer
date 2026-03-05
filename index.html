@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <meta charset="UTF-8">
@@ -80,10 +81,6 @@ padding:8px;
 margin-bottom:10px;
 }
 
-.filter{
-margin-bottom:15px;
-}
-
 </style>
 
 </head>
@@ -99,13 +96,6 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 <div class="sidebar">
 
 <input id="search" class="search" placeholder="Cari KBLI / Aktivitas">
-
-<div class="filter">
-
-<label><input type="checkbox" id="hijau" checked> Hijau</label><br>
-<label><input type="checkbox" id="transisi" checked> Transisi</label>
-
-</div>
 
 <h4>Sektor</h4>
 
@@ -129,30 +119,45 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 <script>
 
 ////////////////////////////////////////////////////
-//// CLEAR CACHE
+// CLEAR CACHE (penting agar XML tidak tersimpan lama)
 ////////////////////////////////////////////////////
 
 if ('caches' in window) {
-caches.keys().then(names=>{
-for (let name of names) caches.delete(name)
-})
+caches.keys().then(function(names) {
+for (let name of names) caches.delete(name);
+});
 }
 
 ////////////////////////////////////////////////////
-//// GLOBAL VARIABLE
+// GLOBAL VARIABLE
 ////////////////////////////////////////////////////
 
 let xmlData
 
 ////////////////////////////////////////////////////
-//// LOAD XML ZIP
+// SLUG SEKTOR UNTUK ROUTING URL
+////////////////////////////////////////////////////
+
+const sektorSlug = {
+"energi":"Energi",
+"konstruksi":"Konstruksi dan Real Estate (C&RE)",
+"transportasi":"Pengangkutan dan Pergudangan (T&S)",
+"aff":"Pertanian, Kehutanan, dan Perikanan (AFF)",
+"ic":"Informasi dan Komunikasi (IC)",
+"manufaktur":"Manufaktur (IPPU)",
+"pst":"Profesional, Ilmiah, dan Teknis (PST)",
+"air":"Pengelolaan Air, Limbah, dan Sampah (WSSWMR)"
+}
+
+////////////////////////////////////////////////////
+// LOAD XML ZIP
 ////////////////////////////////////////////////////
 
 fetch("TKBI.xml.zip?nocache=" + Date.now())
-.then(res=>res.arrayBuffer())
-.then(data=>JSZip.loadAsync(data))
-.then(zip=>zip.file("TKBI.xml").async("text"))
-.then(xmlText=>{
+.then(res => res.arrayBuffer())
+.then(data => JSZip.loadAsync(data))
+.then(zip => zip.file("TKBI.xml").async("text"))
+.then(xmlText => {
 
 const parser = new DOMParser()
 xmlData = parser.parseFromString(xmlText,"text/xml")
@@ -162,37 +167,31 @@ initExplorer()
 })
 
 ////////////////////////////////////////////////////
-//// INITIALIZE SIDEBAR
+// INIT SIDEBAR
 ////////////////////////////////////////////////////
 
 function initExplorer(){
 
 const sektorList=document.getElementById("sektorList")
 
-const sektorNodes=xmlData.getElementsByTagName("Sektor")
-
-for(let s of sektorNodes){
-
-let nama=s.getElementsByTagName("Nama")[0]?.textContent
-
-if(!nama) continue
+Object.keys(sektorSlug).forEach(slug => {
 
 let div=document.createElement("div")
 div.className="sektor"
-div.innerText=nama
+div.innerText=sektorSlug[slug]
 
-div.onclick=()=>navigate(nama.toLowerCase())
+div.onclick=()=>navigate(slug)
 
 sektorList.appendChild(div)
 
-}
+})
 
 route()
 
 }
 
 ////////////////////////////////////////////////////
-//// ROUTER
+// ROUTER
 ////////////////////////////////////////////////////
 
 function navigate(path){
@@ -216,42 +215,47 @@ else showSektor(path)
 }
 
 ////////////////////////////////////////////////////
-//// SHOW SEKTOR
+// SHOW SEKTOR
 ////////////////////////////////////////////////////
 
-function showSektor(path){
+function showSektor(slug){
 
 const content=document.getElementById("content")
 
-const sektorNodes=Array.from(xmlData.getElementsByTagName("Sektor"))
+let sektorName=sektorSlug[slug]
 
-let sektor=sektorNodes.find(s=>{
+if(!sektorName){
+content.innerHTML="Pilih sektor di sidebar."
+return
+}
+
+const sektorNodes=xmlData.getElementsByTagName("Sektor")
+
+let sektor=null
+
+for(let s of sektorNodes){
 
 let nama=s.getElementsByTagName("Nama")[0]?.textContent
 
-return nama && nama.toLowerCase()==path
-
-})
-
-if(!sektor){
-
-content.innerHTML="Pilih sektor di sidebar."
-return
+if(nama==sektorName){
+sektor=s
+break
+}
 
 }
 
-let namaSektor=sektor.getElementsByTagName("Nama")[0].textContent
+if(!sektor){
+content.innerHTML="Data sektor tidak ditemukan."
+return
+}
 
-content.innerHTML="<h2>"+namaSektor+"</h2>"
+content.innerHTML="<h2>"+sektorName+"</h2>"
 
 let tscParent=sektor.getElementsByTagName("TSC")[0]
 
 if(!tscParent) return
 
 let tscList=tscParent.getElementsByTagName("TSC")
-
-const hijau=document.getElementById("hijau").checked
-const transisi=document.getElementById("transisi").checked
 
 for(let t of tscList){
 
@@ -261,17 +265,13 @@ let klasifikasi=t.getElementsByTagName("Klasifikasi")[0]?.textContent
 
 if(!kode) continue
 
-if(klasifikasi=="Hijau" && !hijau) continue
-if(klasifikasi=="Transisi" && !transisi) continue
-
 let div=document.createElement("div")
 div.className="activity"
 
-div.innerHTML="<b>"+namaKBLI+"</b><br>Kode TSC: "+kode+"<br>Klasifikasi: "+klasifikasi
-
-////////////////////////////////////////////////////
-//// PERTANYAAN
-////////////////////////////////////////////////////
+div.innerHTML=
+"<b>"+namaKBLI+"</b><br>"+
+"Kode TSC: "+kode+"<br>"+
+"Klasifikasi: "+klasifikasi
 
 let pertanyaan=t.getElementsByTagName("Pertanyaan")
 
@@ -292,6 +292,7 @@ let ktext=k.getElementsByTagName("Text")[0]?.textContent
 
 let kdiv=document.createElement("div")
 kdiv.className="kriteria"
+
 kdiv.innerHTML="• "+ktext
 
 pdiv.appendChild(kdiv)
@@ -309,7 +310,7 @@ content.appendChild(div)
 }
 
 ////////////////////////////////////////////////////
-//// SHOW DNSH
+// DNSH
 ////////////////////////////////////////////////////
 
 function showDNSH(){
@@ -318,7 +319,7 @@ const content=document.getElementById("content")
 
 content.innerHTML="<h2>DNSH</h2>"
 
-let sektorNodes=xmlData.getElementsByTagName("Sektor")
+const sektorNodes=xmlData.getElementsByTagName("Sektor")
 
 for(let s of sektorNodes){
 
@@ -331,6 +332,8 @@ let dnshList=dnshParent.getElementsByTagName("DNSH")
 for(let d of dnshList){
 
 let nama=d.getElementsByTagName("Nama")[0]?.textContent
+
+if(!nama) continue
 
 let div=document.createElement("div")
 div.className="activity"
@@ -346,7 +349,7 @@ content.appendChild(div)
 }
 
 ////////////////////////////////////////////////////
-//// SHOW SOCIAL
+// ASPEK SOSIAL
 ////////////////////////////////////////////////////
 
 function showSocial(){
@@ -373,27 +376,6 @@ content.appendChild(div)
 }
 
 }
-
-////////////////////////////////////////////////////
-//// SEARCH
-////////////////////////////////////////////////////
-
-document.getElementById("search").addEventListener("keyup",function(){
-
-let keyword=this.value.toLowerCase()
-
-let sektor=document.querySelectorAll(".sektor")
-
-sektor.forEach(s=>{
-
-if(s.innerText.toLowerCase().includes(keyword))
-s.style.display="block"
-else
-s.style.display="none"
-
-})
-
-})
 
 </script>
 
