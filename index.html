@@ -1,56 +1,73 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <meta charset="UTF-8">
-<title>TKBI v3 OJK Explorer - by Leonard Tiopan Panjaitan @2026</title>
+
+<title>
+TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS - March 2026
+</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
 
 body{
+margin:0;
 font-family:Arial;
 background:#f4f6f8;
-margin:0;
-padding:20px;
 }
 
-h1{
-color:#1b5e20;
+header{
+background:#1b5e20;
+color:white;
+padding:20px;
+font-size:18px;
+font-weight:bold;
 }
 
 .container{
-max-width:1200px;
-margin:auto;
+display:flex;
+height:calc(100vh - 70px);
 }
 
-.card{
+.sidebar{
+width:280px;
 background:white;
-padding:20px;
-margin-bottom:15px;
-border-radius:8px;
-box-shadow:0 2px 4px rgba(0,0,0,0.1);
+border-right:1px solid #ddd;
+overflow:auto;
+padding:15px;
+}
+
+.main{
+flex:1;
+overflow:auto;
+padding:25px;
 }
 
 .sektor{
-font-size:22px;
-font-weight:bold;
-color:#0d47a1;
-margin-top:20px;
+padding:10px;
+cursor:pointer;
+border-bottom:1px solid #eee;
 }
 
-.tsc{
-margin-top:15px;
-padding:15px;
-border-left:4px solid #2e7d32;
+.sektor:hover{
 background:#f1f8e9;
 }
 
+.activity{
+background:white;
+padding:15px;
+margin-bottom:10px;
+border-left:4px solid #2e7d32;
+border-radius:5px;
+}
+
 .pertanyaan{
-margin-top:10px;
-padding:10px;
 background:#fafafa;
+padding:10px;
+margin-top:10px;
 border-radius:5px;
 }
 
@@ -58,8 +75,20 @@ border-radius:5px;
 margin-left:20px;
 }
 
+.tree{
+margin-left:20px;
+font-size:14px;
+color:#333;
+}
+
+.filter{
+margin-bottom:10px;
+}
+
 .search{
-margin-bottom:20px;
+width:100%;
+padding:8px;
+margin-bottom:10px;
 }
 
 </style>
@@ -68,143 +97,279 @@ margin-bottom:20px;
 
 <body>
 
+<header>
+TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS - March 2026
+</header>
+
 <div class="container">
 
-<h1>TKBI v3 OJK Explorer - by Leonard Tiopan Panjaitan @2026</h1>
+<div class="sidebar">
 
-<input class="search" id="search" placeholder="Cari aktivitas / KBLI..." style="width:100%;padding:10px;font-size:16px;">
+<input id="search" class="search" placeholder="Cari KBLI / Aktivitas">
+
+<div class="filter">
+
+<label><input type="checkbox" id="hijau" checked> Hijau</label><br>
+<label><input type="checkbox" id="transisi" checked> Transisi</label>
+
+</div>
+
+<h4>Sektor</h4>
+<div id="sektorList"></div>
+
+<h4>Prinsip</h4>
+
+<div class="sektor" onclick="navigate('dnsh')">DNSH</div>
+<div class="sektor" onclick="navigate('aspek-sosial')">Aspek Sosial</div>
+
+</div>
+
+<div class="main">
 
 <div id="content">Memuat data TKBI...</div>
 
 </div>
 
+</div>
+
 <script>
 
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 // CLEAR CACHE
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
 if ('caches' in window) {
-caches.keys().then(function(names) {
-for (let name of names) caches.delete(name);
-});
+caches.keys().then(names=>{
+for (let name of names) caches.delete(name)
+})
 }
 
-////////////////////////////////////////////////////
-// LOAD ZIP
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// GLOBAL
+////////////////////////////////////////////////////////////
+
+let xmlData
+
+////////////////////////////////////////////////////////////
+// LOAD XML
+////////////////////////////////////////////////////////////
 
 fetch("TKBI.xml.zip?nocache=" + Date.now())
-.then(res => res.arrayBuffer())
-.then(data => JSZip.loadAsync(data))
-.then(zip => zip.file("TKBI.xml").async("text"))
-.then(xmlText => {
+.then(res=>res.arrayBuffer())
+.then(data=>JSZip.loadAsync(data))
+.then(zip=>zip.file("TKBI.xml").async("text"))
+.then(xmlText=>{
 
 const parser = new DOMParser()
-const xml = parser.parseFromString(xmlText,"text/xml")
+xmlData = parser.parseFromString(xmlText,"text/xml")
 
-renderTKBI(xml)
+init()
 
 })
 
-////////////////////////////////////////////////////
-// RENDER
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// INITIALIZE
+////////////////////////////////////////////////////////////
 
-function renderTKBI(xml){
+function init(){
 
-const content = document.getElementById("content")
-content.innerHTML=""
-
-const sektor = xml.getElementsByTagName("Sektor")
+const sektorList=document.getElementById("sektorList")
+const sektor=xmlData.getElementsByTagName("Sektor")
 
 for(let s of sektor){
 
-let sektorNama = s.getElementsByTagName("Nama")[0]?.textContent
+let nama=s.getElementsByTagName("Nama")[0]?.textContent
 
-let sektorDiv = document.createElement("div")
-sektorDiv.className="card"
+let div=document.createElement("div")
+div.className="sektor"
+div.textContent=nama
 
-let title = document.createElement("div")
-title.className="sektor"
-title.textContent = sektorNama
+div.onclick=()=>navigate(nama)
 
-sektorDiv.appendChild(title)
+sektorList.appendChild(div)
 
-const tscList = s.getElementsByTagName("TSC")
+}
 
-for(let tscNode of tscList){
+route()
 
-let kode = tscNode.getElementsByTagName("Kode")[0]?.textContent
-let nama = tscNode.getElementsByTagName("NamaKBLI")[0]?.textContent
-let klasifikasi = tscNode.getElementsByTagName("Klasifikasi")[0]?.textContent
+}
+
+////////////////////////////////////////////////////////////
+// ROUTING
+////////////////////////////////////////////////////////////
+
+function navigate(path){
+
+history.pushState({}, "", path.toLowerCase())
+
+route()
+
+}
+
+window.onpopstate=route
+
+function route(){
+
+let path=window.location.pathname.split("/").pop()
+
+if(path=="dnsh") showDNSH()
+else if(path=="aspek-sosial") showSocial()
+else showSektor(path)
+
+}
+
+////////////////////////////////////////////////////////////
+// SHOW SEKTOR
+////////////////////////////////////////////////////////////
+
+function showSektor(nama){
+
+const content=document.getElementById("content")
+
+const sektor=Array.from(xmlData.getElementsByTagName("Sektor"))
+.find(s=>s.getElementsByTagName("Nama")[0]?.textContent.toLowerCase()==nama)
+
+if(!sektor){
+content.innerHTML="Pilih sektor di sidebar."
+return
+}
+
+content.innerHTML="<h2>"+nama+"</h2>"
+
+const hijau=document.getElementById("hijau").checked
+const transisi=document.getElementById("transisi").checked
+
+const tscList=sektor.getElementsByTagName("TSC")
+
+for(let t of tscList){
+
+let klasifikasi=t.getElementsByTagName("Klasifikasi")[0]?.textContent
+
+if(klasifikasi=="Hijau" && !hijau) continue
+if(klasifikasi=="Transisi" && !transisi) continue
+
+let kode=t.getElementsByTagName("Kode")[0]?.textContent
+let namaKBLI=t.getElementsByTagName("NamaKBLI")[0]?.textContent
 
 if(!kode) continue
 
-let tscDiv = document.createElement("div")
-tscDiv.className="tsc"
+let div=document.createElement("div")
+div.className="activity"
 
-tscDiv.innerHTML = `
-<b>${nama}</b><br>
-Kode TSC : ${kode}<br>
-Klasifikasi : ${klasifikasi}
-`
+div.innerHTML="<b>"+namaKBLI+"</b><br>Kode TSC: "+kode+"<br>Klasifikasi: "+klasifikasi
 
-let pertanyaan = tscNode.getElementsByTagName("Pertanyaan")
+////////////////////////////////////////////////////////////
+// PERTANYAAN
+////////////////////////////////////////////////////////////
+
+let pertanyaan=t.getElementsByTagName("Pertanyaan")
 
 for(let p of pertanyaan){
 
-let pText = p.getElementsByTagName("Text")[0]?.textContent
+let ptext=p.getElementsByTagName("Text")[0]?.textContent
 
-let pDiv = document.createElement("div")
-pDiv.className="pertanyaan"
+let pdiv=document.createElement("div")
+pdiv.className="pertanyaan"
 
-pDiv.innerHTML = `<b>Pertanyaan:</b> ${pText}`
+pdiv.innerHTML="<b>Pertanyaan:</b> "+ptext
 
-let kriteria = p.getElementsByTagName("Kriteria")
+let kriteria=p.getElementsByTagName("Kriteria")
 
 for(let k of kriteria){
 
-let kText = k.getElementsByTagName("Text")[0]?.textContent
+let ktext=k.getElementsByTagName("Text")[0]?.textContent
 
-let li = document.createElement("div")
-li.className="kriteria"
-li.innerHTML = "• " + kText
+let kdiv=document.createElement("div")
+kdiv.className="kriteria"
 
-pDiv.appendChild(li)
+kdiv.innerHTML="• "+ktext
 
-}
-
-tscDiv.appendChild(pDiv)
+pdiv.appendChild(kdiv)
 
 }
 
-sektorDiv.appendChild(tscDiv)
+div.appendChild(pdiv)
 
 }
 
-content.appendChild(sektorDiv)
+content.appendChild(div)
 
 }
 
 }
 
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// DNSH
+////////////////////////////////////////////////////////////
+
+function showDNSH(){
+
+const content=document.getElementById("content")
+
+content.innerHTML="<h2>DNSH</h2>"
+
+let dnsh=xmlData.getElementsByTagName("DNSH")
+
+for(let d of dnsh){
+
+let nama=d.getElementsByTagName("Nama")[0]?.textContent
+
+let div=document.createElement("div")
+div.className="activity"
+
+div.innerHTML="<b>"+nama+"</b>"
+
+content.appendChild(div)
+
+}
+
+}
+
+////////////////////////////////////////////////////////////
+// ASPEK SOSIAL
+////////////////////////////////////////////////////////////
+
+function showSocial(){
+
+const content=document.getElementById("content")
+
+content.innerHTML="<h2>Aspek Sosial</h2>"
+
+let sosial=xmlData.getElementsByTagName("AspekSosial")
+
+if(sosial.length==0) return
+
+let pilar=sosial[0].getElementsByTagName("NamaPilar")
+
+for(let p of pilar){
+
+let div=document.createElement("div")
+div.className="activity"
+
+div.innerHTML="• "+p.textContent
+
+content.appendChild(div)
+
+}
+
+}
+
+////////////////////////////////////////////////////////////
 // SEARCH
-////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-document.getElementById("search").addEventListener("keyup", function(){
+document.getElementById("search").addEventListener("keyup",function(){
 
-let keyword = this.value.toLowerCase()
+let keyword=this.value.toLowerCase()
 
-let cards = document.querySelectorAll(".tsc")
+let sektor=document.querySelectorAll(".sektor")
 
-cards.forEach(function(card){
+sektor.forEach(s=>{
 
-if(card.innerText.toLowerCase().includes(keyword))
-card.style.display="block"
+if(s.innerText.toLowerCase().includes(keyword))
+s.style.display="block"
 else
-card.style.display="none"
+s.style.display="none"
 
 })
 
