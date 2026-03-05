@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <meta charset="UTF-8">
@@ -22,18 +21,18 @@ background:#f4f6f8;
 header{
 background:#1b5e20;
 color:white;
-padding:20px;
+padding:18px;
 font-size:18px;
 font-weight:bold;
 }
 
 .container{
 display:flex;
-height:calc(100vh - 70px);
+height:calc(100vh - 65px);
 }
 
 .sidebar{
-width:280px;
+width:300px;
 background:white;
 border-right:1px solid #ddd;
 overflow:auto;
@@ -75,20 +74,14 @@ border-radius:5px;
 margin-left:20px;
 }
 
-.tree{
-margin-left:20px;
-font-size:14px;
-color:#333;
-}
-
-.filter{
-margin-bottom:10px;
-}
-
 .search{
 width:100%;
 padding:8px;
 margin-bottom:10px;
+}
+
+.filter{
+margin-bottom:15px;
 }
 
 </style>
@@ -115,6 +108,7 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 </div>
 
 <h4>Sektor</h4>
+
 <div id="sektorList"></div>
 
 <h4>Prinsip</h4>
@@ -126,7 +120,7 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 
 <div class="main">
 
-<div id="content">Memuat data TKBI...</div>
+<div id="content">Memuat TKBI...</div>
 
 </div>
 
@@ -134,9 +128,9 @@ TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS 
 
 <script>
 
-////////////////////////////////////////////////////////////
-// CLEAR CACHE
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// CLEAR CACHE
+////////////////////////////////////////////////////
 
 if ('caches' in window) {
 caches.keys().then(names=>{
@@ -144,15 +138,15 @@ for (let name of names) caches.delete(name)
 })
 }
 
-////////////////////////////////////////////////////////////
-// GLOBAL
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// GLOBAL VARIABLE
+////////////////////////////////////////////////////
 
 let xmlData
 
-////////////////////////////////////////////////////////////
-// LOAD XML
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// LOAD XML ZIP
+////////////////////////////////////////////////////
 
 fetch("TKBI.xml.zip?nocache=" + Date.now())
 .then(res=>res.arrayBuffer())
@@ -163,28 +157,31 @@ fetch("TKBI.xml.zip?nocache=" + Date.now())
 const parser = new DOMParser()
 xmlData = parser.parseFromString(xmlText,"text/xml")
 
-init()
+initExplorer()
 
 })
 
-////////////////////////////////////////////////////////////
-// INITIALIZE
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// INITIALIZE SIDEBAR
+////////////////////////////////////////////////////
 
-function init(){
+function initExplorer(){
 
 const sektorList=document.getElementById("sektorList")
-const sektor=xmlData.getElementsByTagName("Sektor")
 
-for(let s of sektor){
+const sektorNodes=xmlData.getElementsByTagName("Sektor")
+
+for(let s of sektorNodes){
 
 let nama=s.getElementsByTagName("Nama")[0]?.textContent
 
+if(!nama) continue
+
 let div=document.createElement("div")
 div.className="sektor"
-div.textContent=nama
+div.innerText=nama
 
-div.onclick=()=>navigate(nama)
+div.onclick=()=>navigate(nama.toLowerCase())
 
 sektorList.appendChild(div)
 
@@ -194,13 +191,13 @@ route()
 
 }
 
-////////////////////////////////////////////////////////////
-// ROUTING
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// ROUTER
+////////////////////////////////////////////////////
 
 function navigate(path){
 
-history.pushState({}, "", path.toLowerCase())
+history.pushState({}, "", path)
 
 route()
 
@@ -218,60 +215,74 @@ else showSektor(path)
 
 }
 
-////////////////////////////////////////////////////////////
-// SHOW SEKTOR
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// SHOW SEKTOR
+////////////////////////////////////////////////////
 
-function showSektor(nama){
+function showSektor(path){
 
 const content=document.getElementById("content")
 
-const sektor=Array.from(xmlData.getElementsByTagName("Sektor"))
-.find(s=>s.getElementsByTagName("Nama")[0]?.textContent.toLowerCase()==nama)
+const sektorNodes=Array.from(xmlData.getElementsByTagName("Sektor"))
+
+let sektor=sektorNodes.find(s=>{
+
+let nama=s.getElementsByTagName("Nama")[0]?.textContent
+
+return nama && nama.toLowerCase()==path
+
+})
 
 if(!sektor){
+
 content.innerHTML="Pilih sektor di sidebar."
 return
+
 }
 
-content.innerHTML="<h2>"+nama+"</h2>"
+let namaSektor=sektor.getElementsByTagName("Nama")[0].textContent
+
+content.innerHTML="<h2>"+namaSektor+"</h2>"
+
+let tscParent=sektor.getElementsByTagName("TSC")[0]
+
+if(!tscParent) return
+
+let tscList=tscParent.getElementsByTagName("TSC")
 
 const hijau=document.getElementById("hijau").checked
 const transisi=document.getElementById("transisi").checked
 
-const tscList=sektor.getElementsByTagName("TSC")
-
 for(let t of tscList){
-
-let klasifikasi=t.getElementsByTagName("Klasifikasi")[0]?.textContent
-
-if(klasifikasi=="Hijau" && !hijau) continue
-if(klasifikasi=="Transisi" && !transisi) continue
 
 let kode=t.getElementsByTagName("Kode")[0]?.textContent
 let namaKBLI=t.getElementsByTagName("NamaKBLI")[0]?.textContent
+let klasifikasi=t.getElementsByTagName("Klasifikasi")[0]?.textContent
 
 if(!kode) continue
+
+if(klasifikasi=="Hijau" && !hijau) continue
+if(klasifikasi=="Transisi" && !transisi) continue
 
 let div=document.createElement("div")
 div.className="activity"
 
 div.innerHTML="<b>"+namaKBLI+"</b><br>Kode TSC: "+kode+"<br>Klasifikasi: "+klasifikasi
 
-////////////////////////////////////////////////////////////
-// PERTANYAAN
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// PERTANYAAN
+////////////////////////////////////////////////////
 
 let pertanyaan=t.getElementsByTagName("Pertanyaan")
 
 for(let p of pertanyaan){
 
-let ptext=p.getElementsByTagName("Text")[0]?.textContent
+let text=p.getElementsByTagName("Text")[0]?.textContent
 
 let pdiv=document.createElement("div")
 pdiv.className="pertanyaan"
 
-pdiv.innerHTML="<b>Pertanyaan:</b> "+ptext
+pdiv.innerHTML="<b>Pertanyaan:</b> "+text
 
 let kriteria=p.getElementsByTagName("Kriteria")
 
@@ -281,7 +292,6 @@ let ktext=k.getElementsByTagName("Text")[0]?.textContent
 
 let kdiv=document.createElement("div")
 kdiv.className="kriteria"
-
 kdiv.innerHTML="• "+ktext
 
 pdiv.appendChild(kdiv)
@@ -298,9 +308,9 @@ content.appendChild(div)
 
 }
 
-////////////////////////////////////////////////////////////
-// DNSH
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// SHOW DNSH
+////////////////////////////////////////////////////
 
 function showDNSH(){
 
@@ -308,9 +318,17 @@ const content=document.getElementById("content")
 
 content.innerHTML="<h2>DNSH</h2>"
 
-let dnsh=xmlData.getElementsByTagName("DNSH")
+let sektorNodes=xmlData.getElementsByTagName("Sektor")
 
-for(let d of dnsh){
+for(let s of sektorNodes){
+
+let dnshParent=s.getElementsByTagName("DNSH")[0]
+
+if(!dnshParent) continue
+
+let dnshList=dnshParent.getElementsByTagName("DNSH")
+
+for(let d of dnshList){
 
 let nama=d.getElementsByTagName("Nama")[0]?.textContent
 
@@ -325,9 +343,11 @@ content.appendChild(div)
 
 }
 
-////////////////////////////////////////////////////////////
-// ASPEK SOSIAL
-////////////////////////////////////////////////////////////
+}
+
+////////////////////////////////////////////////////
+//// SHOW SOCIAL
+////////////////////////////////////////////////////
 
 function showSocial(){
 
@@ -337,7 +357,7 @@ content.innerHTML="<h2>Aspek Sosial</h2>"
 
 let sosial=xmlData.getElementsByTagName("AspekSosial")
 
-if(sosial.length==0) return
+if(!sosial.length) return
 
 let pilar=sosial[0].getElementsByTagName("NamaPilar")
 
@@ -354,9 +374,9 @@ content.appendChild(div)
 
 }
 
-////////////////////////////////////////////////////////////
-// SEARCH
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// SEARCH
+////////////////////////////////////////////////////
 
 document.getElementById("search").addEventListener("keyup",function(){
 
