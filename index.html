@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<title>TKBI Explorer Indonesia - by Leonard Tiopan Panjaitan</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f8;
+margin:0;
+padding:20px;
+}
+
+h1{
+color:#1b5e20;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+}
+
+.card{
+background:white;
+padding:20px;
+margin-bottom:15px;
+border-radius:8px;
+box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sektor{
+font-size:22px;
+font-weight:bold;
+color:#0d47a1;
+margin-top:20px;
+}
+
+.tsc{
+margin-top:15px;
+padding:15px;
+border-left:4px solid #2e7d32;
+background:#f1f8e9;
+}
+
+.pertanyaan{
+margin-top:10px;
+padding:10px;
+background:#fafafa;
+border-radius:5px;
+}
+
+.kriteria{
+margin-left:20px;
+}
+
+.search{
+margin-bottom:20px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>TKBI Explorer Indonesia</h1>
+
+<input class="search" id="search" placeholder="Cari aktivitas / KBLI..." style="width:100%;padding:10px;font-size:16px;">
+
+<div id="content">Memuat data TKBI...</div>
+
+</div>
+
+<script>
+
+////////////////////////////////////////////////////
+// CLEAR CACHE
+////////////////////////////////////////////////////
+
+if ('caches' in window) {
+caches.keys().then(function(names) {
+for (let name of names) caches.delete(name);
+});
+}
+
+////////////////////////////////////////////////////
+// LOAD ZIP
+////////////////////////////////////////////////////
+
+fetch("TKBI.xml.zip?nocache=" + Date.now())
+.then(res => res.arrayBuffer())
+.then(data => JSZip.loadAsync(data))
+.then(zip => zip.file("TKBI.xml").async("text"))
+.then(xmlText => {
+
+const parser = new DOMParser()
+const xml = parser.parseFromString(xmlText,"text/xml")
+
+renderTKBI(xml)
+
+})
+
+////////////////////////////////////////////////////
+// RENDER
+////////////////////////////////////////////////////
+
+function renderTKBI(xml){
+
+const content = document.getElementById("content")
+content.innerHTML=""
+
+const sektor = xml.getElementsByTagName("Sektor")
+
+for(let s of sektor){
+
+let sektorNama = s.getElementsByTagName("Nama")[0]?.textContent
+
+let sektorDiv = document.createElement("div")
+sektorDiv.className="card"
+
+let title = document.createElement("div")
+title.className="sektor"
+title.textContent = sektorNama
+
+sektorDiv.appendChild(title)
+
+const tscList = s.getElementsByTagName("TSC")
+
+for(let tscNode of tscList){
+
+let kode = tscNode.getElementsByTagName("Kode")[0]?.textContent
+let nama = tscNode.getElementsByTagName("NamaKBLI")[0]?.textContent
+let klasifikasi = tscNode.getElementsByTagName("Klasifikasi")[0]?.textContent
+
+if(!kode) continue
+
+let tscDiv = document.createElement("div")
+tscDiv.className="tsc"
+
+tscDiv.innerHTML = `
+<b>${nama}</b><br>
+Kode TSC : ${kode}<br>
+Klasifikasi : ${klasifikasi}
+`
+
+let pertanyaan = tscNode.getElementsByTagName("Pertanyaan")
+
+for(let p of pertanyaan){
+
+let pText = p.getElementsByTagName("Text")[0]?.textContent
+
+let pDiv = document.createElement("div")
+pDiv.className="pertanyaan"
+
+pDiv.innerHTML = `<b>Pertanyaan:</b> ${pText}`
+
+let kriteria = p.getElementsByTagName("Kriteria")
+
+for(let k of kriteria){
+
+let kText = k.getElementsByTagName("Text")[0]?.textContent
+
+let li = document.createElement("div")
+li.className="kriteria"
+li.innerHTML = "• " + kText
+
+pDiv.appendChild(li)
+
+}
+
+tscDiv.appendChild(pDiv)
+
+}
+
+sektorDiv.appendChild(tscDiv)
+
+}
+
+content.appendChild(sektorDiv)
+
+}
+
+}
+
+////////////////////////////////////////////////////
+// SEARCH
+////////////////////////////////////////////////////
+
+document.getElementById("search").addEventListener("keyup", function(){
+
+let keyword = this.value.toLowerCase()
+
+let cards = document.querySelectorAll(".tsc")
+
+cards.forEach(function(card){
+
+if(card.innerText.toLowerCase().includes(keyword))
+card.style.display="block"
+else
+card.style.display="none"
+
+})
+
+})
+
+</script>
+
+</body>
+</html>
