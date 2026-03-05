@@ -8,28 +8,33 @@
 TKBI v3 OJK Explorer - created by Leonard Tiopan Panjaitan, MT, CSRA, CGPS, CPS - March 2026
 </title>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
 
 body{
 margin:0;
-font-family:Arial;
+font-family:Arial, Helvetica, sans-serif;
 background:#f4f6f8;
 }
 
 header{
 background:#1b5e20;
 color:white;
-padding:20px;
-font-size:20px;
+padding:15px;
+font-size:18px;
 font-weight:bold;
+text-align:center;
 }
 
 .container{
 display:flex;
-height:calc(100vh - 70px);
+height:calc(100vh - 60px);
 }
+
+/* SIDEBAR */
 
 .sidebar{
 width:280px;
@@ -45,6 +50,8 @@ overflow:auto;
 padding:20px;
 }
 
+/* SEKTOR */
+
 .sektor-item{
 padding:10px;
 cursor:pointer;
@@ -55,12 +62,15 @@ border-bottom:1px solid #eee;
 background:#f1f8e9;
 }
 
+/* CARD ACTIVITY */
+
 .activity{
 background:white;
 padding:15px;
-margin-bottom:10px;
+margin-bottom:12px;
 border-left:4px solid #2e7d32;
-border-radius:5px;
+border-radius:6px;
+box-shadow:0 1px 2px rgba(0,0,0,0.05);
 }
 
 .pertanyaan{
@@ -71,7 +81,8 @@ border-radius:5px;
 }
 
 .kriteria{
-margin-left:20px;
+margin-left:15px;
+margin-top:3px;
 }
 
 .social{
@@ -81,16 +92,57 @@ margin-top:10px;
 border-radius:5px;
 }
 
+/* SEARCH */
+
 .search{
 width:100%;
 padding:8px;
 margin-bottom:10px;
+border:1px solid #ccc;
+border-radius:4px;
 }
 
 button{
-margin-top:5px;
-padding:6px 10px;
+padding:7px 12px;
 cursor:pointer;
+border:none;
+background:#1b5e20;
+color:white;
+border-radius:4px;
+margin-bottom:10px;
+}
+
+button:hover{
+background:#2e7d32;
+}
+
+/* MOBILE RESPONSIVE */
+
+@media screen and (max-width:768px){
+
+.container{
+flex-direction:column;
+height:auto;
+}
+
+.sidebar{
+width:100%;
+border-right:none;
+border-bottom:1px solid #ddd;
+}
+
+.main{
+padding:15px;
+}
+
+header{
+font-size:16px;
+}
+
+.activity{
+padding:12px;
+}
+
 }
 
 </style>
@@ -132,7 +184,7 @@ Memuat data TKBI...
 ////////////////////////////////////////////////////////
 
 if ('caches' in window) {
-caches.keys().then(names => {
+caches.keys().then(names=>{
 for (let name of names) caches.delete(name)
 })
 }
@@ -141,14 +193,14 @@ for (let name of names) caches.delete(name)
 // LOAD XML ZIP
 ////////////////////////////////////////////////////////
 
-fetch("TKBI.xml.zip?nocache=" + Date.now())
-.then(res => res.arrayBuffer())
-.then(data => JSZip.loadAsync(data))
-.then(zip => zip.file("TKBI.xml").async("text"))
-.then(xmlText => {
+fetch("TKBI.xml.zip?nocache="+Date.now())
+.then(res=>res.arrayBuffer())
+.then(data=>JSZip.loadAsync(data))
+.then(zip=>zip.file("TKBI.xml").async("text"))
+.then(xmlText=>{
 
-const parser = new DOMParser()
-const xml = parser.parseFromString(xmlText,"text/xml")
+const parser=new DOMParser()
+const xml=parser.parseFromString(xmlText,"text/xml")
 
 initExplorer(xml)
 
@@ -162,20 +214,20 @@ let xmlData
 
 function initExplorer(xml){
 
-xmlData = xml
+xmlData=xml
 
-const sektor = xml.getElementsByTagName("Sektor")
-const sektorList = document.getElementById("sektorList")
+const sektor=xml.getElementsByTagName("Sektor")
+const sektorList=document.getElementById("sektorList")
 
 for(let s of sektor){
 
-let nama = s.getElementsByTagName("Nama")[0]?.textContent
+let nama=s.getElementsByTagName("Nama")[0]?.textContent
 
-let div = document.createElement("div")
+let div=document.createElement("div")
 div.className="sektor-item"
 div.textContent=nama
 
-div.onclick = () => showSektor(s)
+div.onclick=()=>showSektor(s)
 
 sektorList.appendChild(div)
 
@@ -191,30 +243,29 @@ document.getElementById("content").innerHTML="Pilih sektor di sebelah kiri."
 
 function showSektor(sektorNode){
 
-const content = document.getElementById("content")
+const content=document.getElementById("content")
 content.innerHTML=""
 
-const sektorNama = sektorNode.getElementsByTagName("Nama")[0]?.textContent
+const sektorNama=sektorNode.getElementsByTagName("Nama")[0]?.textContent
 
-let title = document.createElement("h2")
+let title=document.createElement("h2")
 title.textContent=sektorNama
-
 content.appendChild(title)
 
-const tscList = sektorNode.getElementsByTagName("TSC")
+const tscList=sektorNode.getElementsByTagName("TSC")
 
 for(let tscNode of tscList){
 
-let kode = tscNode.getElementsByTagName("Kode")[0]?.textContent
-let nama = tscNode.getElementsByTagName("NamaKBLI")[0]?.textContent
-let klasifikasi = tscNode.getElementsByTagName("Klasifikasi")[0]?.textContent
+let kode=tscNode.getElementsByTagName("Kode")[0]?.textContent
+let nama=tscNode.getElementsByTagName("NamaKBLI")[0]?.textContent
+let klasifikasi=tscNode.getElementsByTagName("Klasifikasi")[0]?.textContent
 
 if(!kode) continue
 
-let activity = document.createElement("div")
+let activity=document.createElement("div")
 activity.className="activity"
 
-activity.innerHTML = `
+activity.innerHTML=`
 <b>${nama}</b><br>
 Kode TSC : ${kode}<br>
 Klasifikasi : ${klasifikasi}
@@ -224,24 +275,24 @@ Klasifikasi : ${klasifikasi}
 // PERTANYAAN
 ////////////////////////////////////////////////////////
 
-let pertanyaan = tscNode.getElementsByTagName("Pertanyaan")
+let pertanyaan=tscNode.getElementsByTagName("Pertanyaan")
 
 for(let p of pertanyaan){
 
-let text = p.getElementsByTagName("Text")[0]?.textContent
+let text=p.getElementsByTagName("Text")[0]?.textContent
 
-let div = document.createElement("div")
+let div=document.createElement("div")
 div.className="pertanyaan"
 
 div.innerHTML="<b>Pertanyaan:</b> "+text
 
-let kriteria = p.getElementsByTagName("Kriteria")
+let kriteria=p.getElementsByTagName("Kriteria")
 
 for(let k of kriteria){
 
-let ktext = k.getElementsByTagName("Text")[0]?.textContent
+let ktext=k.getElementsByTagName("Text")[0]?.textContent
 
-let kr = document.createElement("div")
+let kr=document.createElement("div")
 kr.className="kriteria"
 
 kr.innerHTML="• "+ktext
@@ -258,20 +309,20 @@ activity.appendChild(div)
 // ASPEK SOSIAL
 ////////////////////////////////////////////////////////
 
-let sosial = sektorNode.getElementsByTagName("AspekSosial")
+let sosial=sektorNode.getElementsByTagName("AspekSosial")
 
 if(sosial.length>0){
 
-let socialDiv = document.createElement("div")
+let socialDiv=document.createElement("div")
 socialDiv.className="social"
 
 socialDiv.innerHTML="<b>Aspek Sosial:</b>"
 
-let pilar = sosial[0].getElementsByTagName("NamaPilar")
+let pilar=sosial[0].getElementsByTagName("NamaPilar")
 
 for(let p of pilar){
 
-let line = document.createElement("div")
+let line=document.createElement("div")
 line.innerHTML="• "+p.textContent
 
 socialDiv.appendChild(line)
@@ -289,53 +340,53 @@ content.appendChild(activity)
 }
 
 ////////////////////////////////////////////////////////
-// FULL TEXT SEARCH TKBI
+// FULL TEXT SEARCH
 ////////////////////////////////////////////////////////
 
-document.getElementById("search").addEventListener("keyup", function(){
+document.getElementById("search").addEventListener("keyup",function(){
 
-let keyword = this.value.toLowerCase()
+let keyword=this.value.toLowerCase()
 
-if(keyword.length < 2) return
+if(keyword.length<2) return
 
-const content = document.getElementById("content")
+const content=document.getElementById("content")
 
-content.innerHTML = "<h2>Hasil Pencarian</h2>"
+content.innerHTML="<h2>Hasil Pencarian</h2>"
 
-let tscNodes = xmlData.getElementsByTagName("TSC")
+let tscNodes=xmlData.getElementsByTagName("TSC")
 
 for(let t of tscNodes){
 
-let kode = t.getElementsByTagName("Kode")[0]?.textContent || ""
-let nama = t.getElementsByTagName("NamaKBLI")[0]?.textContent || ""
+let kode=t.getElementsByTagName("Kode")[0]?.textContent||""
+let nama=t.getElementsByTagName("NamaKBLI")[0]?.textContent||""
 
-let pertanyaanText = ""
-let kriteriaText = ""
+let pertanyaanText=""
+let kriteriaText=""
 
-let pertanyaan = t.getElementsByTagName("Pertanyaan")
+let pertanyaan=t.getElementsByTagName("Pertanyaan")
 
 for(let p of pertanyaan){
 
-pertanyaanText += p.textContent + " "
+pertanyaanText+=p.textContent+" "
 
-let kriteria = p.getElementsByTagName("Kriteria")
+let kriteria=p.getElementsByTagName("Kriteria")
 
 for(let k of kriteria){
 
-kriteriaText += k.textContent + " "
+kriteriaText+=k.textContent+" "
 
 }
 
 }
 
-let fullText = (kode + " " + nama + " " + pertanyaanText + " " + kriteriaText).toLowerCase()
+let fullText=(kode+" "+nama+" "+pertanyaanText+" "+kriteriaText).toLowerCase()
 
 if(fullText.includes(keyword)){
 
-let div = document.createElement("div")
+let div=document.createElement("div")
 div.className="activity"
 
-div.innerHTML = `
+div.innerHTML=`
 <b>${nama}</b><br>
 Kode TSC : ${kode}
 `
@@ -349,13 +400,12 @@ content.appendChild(div)
 })
 
 ////////////////////////////////////////////////////////
-// RESET / REFRESH PAGE
+// RESET PAGE
 ////////////////////////////////////////////////////////
 
 function resetPage(){
 
 document.getElementById("search").value=""
-
 document.getElementById("content").innerHTML="Pilih sektor di sebelah kiri."
 
 }
